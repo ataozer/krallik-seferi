@@ -13,7 +13,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: 8.14.3 }
       - name: Oyunu kopyala
-        run: cp index.html app/src/main/assets/index.html
+        run: mkdir -p app/src/main/assets && cp index.html app/src/main/assets/index.html
       - run: gradle assembleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
