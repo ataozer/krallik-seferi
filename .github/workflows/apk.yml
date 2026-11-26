@@ -1,0 +1,21 @@
+name: APK uret
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: 8.14.3 }
+      - name: Oyunu kopyala
+        run: cp index.html app/src/main/assets/index.html
+      - run: gradle assembleRelease --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: krallik-seferi-apk
+          path: app/build/outputs/apk/release/*.apk
