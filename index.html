@@ -311,7 +311,7 @@ function dailyTick(){const tc=troopCount(),need=Math.max(1,Math.floor(tc/5));
  for(const st of W.setl)if(!st.town&&st.vol<8&&G.day%2===0)st.vol++;
  if(PL)polDaily();
  vDaily();cvDaily();charDaily();shipDaily();storyDaily();terrCheck();kdDaily();xDaily();nDaily();
- save()}
+ (window.requestIdleCallback||setTimeout)(save,{timeout:1500})}
 function upgradeTroop(id,to,max){const s=G.stacks.find(s=>s.id===id);if(!s)return 0;const t=TROOPS[id],cost=TROOPS[to].tier===3?50:20;let n=0;
  while(n<max&&s.count-s.wounded>0&&s.xp>=t.xpUp&&G.gold>=cost){s.xp-=t.xpUp;G.gold-=cost;removeTroop(id,1);addTroop(to,1);n++;if(!G.stacks.includes(s))break}
  return n}
@@ -378,7 +378,7 @@ function colorAt(x,y){const cv_=coastVal(x,y);let r,gg,b;
 function sName(n,used){for(let t=0;t<50;t++){const s=SYL[n][0][wr()*SYL[n][0].length|0]+SYL[n][1][wr()*SYL[n][1].length|0];if(!used.has(s)){used.add(s);return s}}return'Yurt'+used.size}
 function placeIn(n,minD,cand){for(let t=0;t<cand;t++){const x=500+wr()*(MW-1000),y=500+wr()*(MH-1000);if(coastVal(x,y)<130||ridgeAt(x,y)>.55||aridAt(x,y)>.85||regionAt(x,y)!==n)continue;if(W.setl.every(o=>Math.hypot(o.x-x,o.y-y)>minD))return[x,y]}return null}
 const SRAD={cap:300,town:240,castle:170,village:200};
-function buildWorld(){wseed=777;W.setl=[];W.roads=[];W.rivers=[];W.ships=[];W.tv=(W.tv||0)+1;W.th=null;W.tiles.clear();const used=new Set();let id=0;
+function buildWorld(){wseed=777;W.ovB=null;W.setl=[];W.roads=[];W.rivers=[];W.ships=[];W.tv=(W.tv||0)+1;W.th=null;W.tiles.clear();const used=new Set();let id=0;
  const add=(n,type,x,y,name)=>{W.setl.push({id:id++,sd:1000+id*7919,name,type,town:type==='cap'||type==='town',cap:type==='cap',castle:type==='castle',nat:n,x,y,vol:4+(wr()*5|0),merc:[],r:SRAD[type]})};
  for(let n=0;n<5;n++){SNAMES[n].forEach(s=>used.add(s));add(n,'cap',CAPS[n][0],CAPS[n][1],SNAMES[n][0])}
  const fr=[0,0,0,0,0];{let tot=0;for(let k=0;k<4000;k++){const x=500+wr()*(MW-1000),y=500+wr()*(MH-1000);if(coastVal(x,y)>130&&ridgeAt(x,y)<.55){fr[regionAt(x,y)]++;tot++}}for(let n=0;n<5;n++)fr[n]/=tot}
@@ -402,12 +402,16 @@ function buildWorld(){wseed=777;W.setl=[];W.roads=[];W.rivers=[];W.ships=[];W.tv
  buildOverview();buildPartySprites()}
 // --- genel görünüm (uzaktan bakış ve karo hazırlanırken yedek) ---
 const OVS=128;
-function buildOverview(){const w=MW/OVS,h=MH/OVS,cv=document.createElement('canvas');cv.width=w;cv.height=h;const g=cv.getContext('2d'),sm=document.createElement('canvas'),sw=w/2|0,sh=h/2|0;sm.width=sw;sm.height=sh;const sg=sm.getContext('2d'),img=sg.createImageData(sw,sh),D=img.data;
- for(let j=0;j<sh;j++)for(let i=0;i<sw;i++){colorAt((i+.5)*OVS*2,(j+.5)*OVS*2);const o=(j*sw+i)*4;D[o]=COL[0];D[o+1]=COL[1];D[o+2]=COL[2];D[o+3]=255}
- sg.putImageData(img,0,0);g.imageSmoothingQuality='high';g.drawImage(sm,0,0,w,h);g.save();g.scale(1/OVS,1/OVS);
- for(const r of W.rivers){g.strokeStyle='#3e7596';g.lineWidth=40;g.lineCap='round';g.lineJoin='round';g.beginPath();r.pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke()}
+function buildOverview(){const w=MW/OVS,h=MH/OVS;
+ if(!W.ovB||W.ovB.width!==w){const b=document.createElement('canvas');b.width=w;b.height=h;const g=b.getContext('2d'),sm=document.createElement('canvas'),sw=w/2|0,sh=h/2|0;sm.width=sw;sm.height=sh;const sg=sm.getContext('2d'),img=sg.createImageData(sw,sh),D=img.data;
+  for(let j=0;j<sh;j++)for(let i=0;i<sw;i++){colorAt((i+.5)*OVS*2,(j+.5)*OVS*2);const o=(j*sw+i)*4;D[o]=COL[0];D[o+1]=COL[1];D[o+2]=COL[2];D[o+3]=255}
+  sg.putImageData(img,0,0);g.imageSmoothingQuality='high';g.drawImage(sm,0,0,w,h);g.save();g.scale(1/OVS,1/OVS);
+  for(const r of W.rivers){g.strokeStyle='#3e7596';g.lineWidth=40;g.lineCap='round';g.lineJoin='round';g.beginPath();r.pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke()}g.restore();W.ovB=b;
+  const cs=[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],pts=[[],[],[],[],[]];W.ovL=[];for(let k=0;k<3000;k++){const x=300+wr()*(MW-600),y=300+wr()*(MH-600);if(coastVal(x,y)>300){const r=regionAt(x,y);cs[r][0]+=x;cs[r][1]+=y;cs[r][2]++;pts[r].push([x,y])}}
+  for(let i=0;i<5;i++)if(cs[i][2]>30){const cx=cs[i][0]/cs[i][2],cy=cs[i][1]/cs[i][2];let bp=pts[i][0],bd=1e18;for(const p of pts[i]){const d=Math.hypot(p[0]-cx,p[1]-cy);if(d<bd){bd=d;bp=p}}W.ovL.push([i,bp[0],bp[1]+300])}}
+ const cv=document.createElement('canvas');cv.width=w;cv.height=h;const g=cv.getContext('2d');g.drawImage(W.ovB,0,0);g.save();g.scale(1/OVS,1/OVS);
  for(const s of W.setl){const N_=NATIONS[s.nat];if(s.type==='village'){F(g,c=>c.arc(s.x,s.y,60,0,7),'#c9a66e',14)}else if(s.castle){F(g,c=>c.rect(s.x-70,s.y-70,140,140),'#a49d90',14);C(g,s.x,s.y,40,N_.c)}else{F(g,c=>c.arc(s.x,s.y,s.cap?190:140,0,7),'#a49d90',16);C(g,s.x,s.y,s.cap?120:85,N_.c)}}
- g.textAlign='center';g.font='italic 700 520px Georgia,serif';{const cs=[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],pts=[[],[],[],[],[]];for(let k=0;k<3000;k++){const x=300+wr()*(MW-600),y=300+wr()*(MH-600);if(coastVal(x,y)>300){const r=regionAt(x,y);cs[r][0]+=x;cs[r][1]+=y;cs[r][2]++;pts[r].push([x,y])}}g.font='italic 700 380px Georgia,serif';for(let i=0;i<5;i++)if(cs[i][2]>30){const cx=cs[i][0]/cs[i][2],cy=cs[i][1]/cs[i][2];let bp=pts[i][0],bd=1e18;for(const p of pts[i]){const d=Math.hypot(p[0]-cx,p[1]-cy);if(d<bd){bd=d;bp=p}}g.fillStyle='rgba(40,25,10,.2)';g.fillText(NATIONS[i].n.toUpperCase(),bp[0],bp[1]+300)}}
+ g.textAlign='center';g.font='italic 700 380px Georgia,serif';g.fillStyle='rgba(40,25,10,.2)';for(const[i,x,y]of W.ovL)g.fillText(NATIONS[i].n.toUpperCase(),x,y);
  g.restore();W.ov=cv}
 // --- karo üretimi (512 birim; ihtiyaç oldukça, önbellekli) ---
 const TS=512,SL=[1,3,9,27];let TSC=4,TQ=1,TMAX=84,CURS=1,TBW=60;
@@ -436,9 +440,9 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(!b
 
 let grainTile=null;
 function hash2(i,j,k){let h=(i*374761393+j*668265263+k*2147483647)|0;h=(h^(h>>>13))*1274126177|0;return((h^(h>>>16))>>>0)/4294967296}
-function renderTile(ti,tj,L){L=L||0;const s_=SL[L],TU=TS*s_,TCu=TSC*s_,x0=ti*TU,y0=tj*TU,n=TS/TSC+2;CURS=s_;TBW=Math.max(50,TCu*2.4);const sm=document.createElement('canvas');sm.width=sm.height=n;const sg=sm.getContext('2d'),img=sg.createImageData(n,n),D=img.data;
- for(let j=0;j<n;j++)for(let i=0;i<n;i++){colorAt(x0+(i-1)*TCu+TCu/2,y0+(j-1)*TCu+TCu/2);const o=(j*n+i)*4;D[o]=COL[0];D[o+1]=COL[1];D[o+2]=COL[2];D[o+3]=255}
- sg.putImageData(img,0,0);const cv=document.createElement('canvas');const q_=L?1:TQ;cv.width=cv.height=Math.round(TS*q_);const g=cv.getContext('2d');g.scale(cv.width/TS,cv.width/TS);g.imageSmoothingQuality='high';if(!L&&gfxP().col)g.filter='saturate(1.12) contrast(1.04)';g.drawImage(sm,-TSC,-TSC,n*TSC,n*TSC);g.filter='none';
+function renderTile(ti,tj,L,PRE){L=L||0;const s_=SL[L],TU=TS*s_,TCu=TSC*s_,x0=ti*TU,y0=tj*TU,n=TS/TSC+2;CURS=s_;TBW=Math.max(50,TCu*2.4);const sm=document.createElement('canvas');sm.width=sm.height=n;const sg=sm.getContext('2d'),img=PRE&&PRE.data?PRE:sg.createImageData(n,n),D=img.data;const BMP=PRE&&!PRE.data?PRE:null;
+ if(!PRE)for(let j=0;j<n;j++)for(let i=0;i<n;i++){colorAt(x0+(i-1)*TCu+TCu/2,y0+(j-1)*TCu+TCu/2);const o=(j*n+i)*4;D[o]=COL[0];D[o+1]=COL[1];D[o+2]=COL[2];D[o+3]=255}
+ if(!BMP)sg.putImageData(img,0,0);const cv=document.createElement('canvas');const q_=L?1:TQ;cv.width=cv.height=Math.round(TS*q_);const g=cv.getContext('2d');g.scale(cv.width/TS,cv.width/TS);g.imageSmoothingQuality='high';if(!L&&gfxP().col&&!BMP)g.filter='saturate(1.12) contrast(1.04)';g.drawImage(BMP||sm,-TSC,-TSC,n*TSC,n*TSC);if(BMP)BMP.close();g.filter='none';
  if(!grainTile){grainTile=document.createElement('canvas');grainTile.width=grainTile.height=128;const tg=grainTile.getContext('2d');for(let k=0;k<2600;k++){tg.fillStyle=Math.random()<.5?'rgba(0,0,0,.09)':'rgba(255,255,230,.08)';tg.fillRect(Math.random()*128,Math.random()*128,1+Math.random()*2,1)}}
  if(L<2){g.fillStyle=g.createPattern(grainTile,'repeat');g.fillRect(0,0,TS,TS)}
  g.scale(1/s_,1/s_);g.translate(-x0,-y0);const bx0=x0-260*s_,bx1=x0+TU+260*s_,by0=y0-260*s_,by1=y0+TU+260*s_;
@@ -475,6 +479,15 @@ function tileFallback(g,i,j,L,TU){
  const cs=SL[L+1];if(cs){const t=W.tiles.get((L+1)+':'+(i/3|0)+','+(j/3|0));if(t&&t.v===W.tv){const sub=t.width/3;g.drawImage(t,(i%3)*sub,(j%3)*sub,sub,sub,i*TU,j*TU,TU+SL[L],TU+SL[L]);return}}
  if(L>0){let ok=0;const sub=TU/3;for(let a=0;a<3;a++)for(let b=0;b<3;b++){const t=W.tiles.get((L-1)+':'+(i*3+a)+','+(j*3+b));if(t&&t.v===W.tv){g.drawImage(t,i*TU+a*sub,j*TU+b*sub,sub+SL[L-1],sub+SL[L-1]);ok++}}if(ok===9)return}
  g.drawImage(W.ov,i*TU/OVS,j*TU/OVS,TU/OVS,TU/OVS,i*TU,j*TU,TU+1,TU+1)}
+// karo üretimi kare kare (takılmayı önler): piksel satırları zaman bütçesiyle işlenir
+const TJ=new Map();let tWarm=0;
+function tileJob(i,j,L){const k=L+':'+i+','+j;if(TJ.has(k))return;const n=TS/TSC+2;TJ.set(k,{k,i,j,L,n,row:0,v:W.tv,img:new ImageData(n,n)});if(TJ.size>14)TJ.delete(TJ.keys().next().value)}
+function tileWork(bud){const t0=performance.now();for(const jb of TJ.values()){if(jb.v!==W.tv){TJ.delete(jb.k);continue}
+  const s_=SL[jb.L],TU=TS*s_,TCu=TSC*s_,x0=jb.i*TU,y0=jb.j*TU,n=jb.n,D=jb.img.data;CURS=s_;TBW=Math.max(50,TCu*2.4);
+  const col=!jb.L&&gfxP().col;while(jb.row<n&&performance.now()-t0<bud){const j=jb.row++;for(let i=0;i<n;i++){colorAt(x0+(i-1)*TCu+TCu/2,y0+(j-1)*TCu+TCu/2);const o=(j*n+i)*4;let r=COL[0],g=COL[1],b=COL[2];if(col){const l=.299*r+.587*g+.114*b;r=(l+(r-l)*1.12-128)*1.04+128;g=(l+(g-l)*1.12-128)*1.04+128;b=(l+(b-l)*1.12-128)*1.04+128}D[o]=r;D[o+1]=g;D[o+2]=b;D[o+3]=255}}
+  if(jb.row>=n&&!jb.bp&&window.createImageBitmap){jb.bp=1;createImageBitmap(jb.img).then(b=>{jb.bmp=b},()=>{jb.bmp=jb.img})}
+  if(jb.row>=n&&(jb.bmp||!window.createImageBitmap)&&performance.now()-t0<bud){TJ.delete(jb.k);const t=renderTile(jb.i,jb.j,jb.L,jb.bmp||jb.img);t.v=W.tv;W.tiles.delete(jb.k);W.tiles.set(jb.k,t);if(W.tiles.size>TMAX)W.tiles.delete(W.tiles.keys().next().value)}
+  if(performance.now()-t0>=bud)break}}
 function getTile(i,j,allowGen,L){L=L||0;const key=L+':'+i+','+j;let t=W.tiles.get(key);if(t&&t.v===W.tv){W.tiles.delete(key);W.tiles.set(key,t);return t}if(!allowGen)return t||null;
  t=renderTile(i,j,L);t.v=W.tv;W.tiles.delete(key);W.tiles.set(key,t);if(W.tiles.size>TMAX)W.tiles.delete(W.tiles.keys().next().value);return t}
 // harita ordu ikonları: kuşbakışı atlı, hareket yönüne döner
@@ -556,13 +569,14 @@ function drawWorld(){const W_=innerWidth,H_=innerHeight;const nowW=performance.n
  g.setTransform(wdpr*z,0,0,wdpr*z,wdpr*(W_/2-wcam.x*z),wdpr*(H_/2-wcam.y*z));g.imageSmoothingEnabled=true;
  {const L=z>=.3?0:z>=.1?1:z>=.033?2:3,TU=TS*SL[L],i0=Math.max(0,Math.floor((wcam.x-hw)/TU)),i1=Math.min(Math.ceil(MW/TU)-1,Math.floor((wcam.x+hw)/TU)),j0=Math.max(0,Math.floor((wcam.y-hh)/TU)),j1=Math.min(Math.ceil(MH/TU)-1,Math.floor((wcam.y+hh)/TU)),t0=performance.now();
   const ci=(i0+i1)/2,cj=(j0+j1)/2,order=[];for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++)order.push([i,j,(i-ci)**2+(j-cj)**2]);order.sort((a,b)=>a[2]-b[2]);
-  let made=0;
-  for(const[i,j]of order){let t=getTile(i,j,false,L);if((!t||t.v!==W.tv)&&made<1&&performance.now()-t0<7){t=getTile(i,j,true,L);made++}
+  let miss=0;
+  for(const[i,j]of order){let t=getTile(i,j,false,L);if(!t||t.v!==W.tv){tileJob(i,j,L);miss++}
    if(t)g.drawImage(t,i*TU,j*TU,TU+SL[L],TU+SL[L]);else tileFallback(g,i,j,L,TU)}
+  if(TJ.size){tileWork(tWarm<2&&miss===order.length?60:(GF.p==='low'||gfxP()===GP.low?3:4.5));if(!miss)tWarm=Math.min(2,tWarm+1)}
   // boşta kalan bütçe: detay katmanı + çevre karoların önceden üretimi
   if(performance.now()-t0<6){let done=0;for(const[i,j]of order){const t=getTile(i,j,false,L);if(t&&t._f){const f=t._f;t._f=null;f();done=1;break}}
    if(!done&&performance.now()-t0<5&&L<2){const ring=[];for(let j=j0-1;j<=j1+1;j++)for(let i=i0-1;i<=i1+1;i++){if(i<0||j<0||i*TU>=MW||j*TU>=MH)continue;if(i>=i0&&i<=i1&&j>=j0&&j<=j1)continue;ring.push([i,j,(i-ci)**2+(j-cj)**2])}ring.sort((a,b)=>a[2]-b[2]);
-    for(const[i,j]of ring){const t=getTile(i,j,false,L);if(!t||t.v!==W.tv){getTile(i,j,true,L);break}}}}
+    if(!TJ.size)for(const[i,j]of ring){const t=getTile(i,j,false,L);if(!t||t.v!==W.tv){tileJob(i,j,L);break}}}}
   if(z<.09)drawNatNames(g,z);drawTrainCamps(g,z)}
  const x0=wcam.x-hw-200,x1=wcam.x+hw+200,y0=wcam.y-hh-200,y1=wcam.y+hh+200,inV=(x,y)=>x>x0&&x<x1&&y>y0&&y<y1;
  if(P.tx!=null){g.strokeStyle='rgba(255,240,190,.8)';g.setLineDash([8/z,8/z]);g.lineWidth=2.4/z;g.beginPath();g.moveTo(P.x,P.y);g.lineTo(P.tx,P.ty);g.stroke();g.setLineDash([]);g.fillStyle='rgba(255,230,150,.9)';g.beginPath();g.arc(P.tx,P.ty,5/z,0,7);g.fill()}
@@ -1410,7 +1424,7 @@ function drawNats(){$('nats').innerHTML=NATIONS.map((n,i)=>`<button class="nat${
 $('nats').onclick=e=>{const b=e.target.closest('[data-n]');if(!b)return;pickNat=+b.dataset.n;drawNats()};
 function showTitle(){setScene('title');$('cc').classList.add('hide');titleLogo();$('contB').classList.toggle('hide',!loadSave());drawNats()}
 function tryLandscape(){try{const d=document.documentElement;if(matchMedia('(pointer:coarse)').matches&&d.requestFullscreen&&!document.fullscreenElement)d.requestFullscreen().then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>{})}catch(_){}}
-function enterWorld(g,fresh){if(!GEOD){setTimeout(()=>enterWorld(g,fresh),60);return}G=g;gInit();if(!G.abil)G.abil=[0,3];if(!G.pol)G.pol=polNew();PL=G.pol;if(!PL.kids)PL.kids=[];if(!G.inv)G.inv=[0,0,0,0,0];buildWorld();if(G.own&&G.own.length>=W.setl.length){W.setl.forEach((s,k)=>s.nat=G.own[k]);W.tiles.clear();buildOverview()}V=G.vil||null;vSetl=null;if(V)makeVillage(V);W.parties=[];spawnLords();if(V)cvRestore();for(let k=0;k<BANDITS-3;k++)spawnBandit();
+function enterWorld(g,fresh){if(!GEOD){setTimeout(()=>enterWorld(g,fresh),60);return}tWarm=0;TJ.clear();G=g;gInit();if(!G.abil)G.abil=[0,3];if(!G.pol)G.pol=polNew();PL=G.pol;if(!PL.kids)PL.kids=[];if(!G.inv)G.inv=[0,0,0,0,0];buildWorld();if(G.own&&G.own.length>=W.setl.length){W.setl.forEach((s,k)=>s.nat=G.own[k]);W.tiles.clear();buildOverview()}V=G.vil||null;vSetl=null;if(V)makeVillage(V);W.parties=[];spawnLords();if(V)cvRestore();for(let k=0;k<BANDITS-3;k++)spawnBandit();
  const home=W.setl.find(s=>s.nat===G.nat&&s.cap);for(let k=0;k<3;k++)spawnBandit(home);spawnCamps();
  if(fresh){P.x=home.x+home.r+60;P.y=home.y+60;xFreshStart(home)}else{P.x=G.x;P.y=G.y;if(G.vol&&G.vol.length>=W.setl.length)W.setl.forEach((s,k)=>{s.vol=G.vol[k];s.merc=G.merc[k]||[]})}
  P.tx=null;P.tgt=null;encounter=null;wcam.z=wzt=.8;setScene('world');updateRes();save();
@@ -1419,15 +1433,16 @@ function enterWorld(g,fresh){if(!GEOD){setTimeout(()=>enterWorld(g,fresh),60);re
 $('contB').onclick=()=>{tryLandscape();const s=loadSave();if(s)enterWorld(s,false)};
 // döngü
 let last=performance.now(),acc=0,frames=0,slowSec=0,fastSec=0,uiT=0;const perf={fps:60,js:0,jsMax:0,inst:0,q:0};window.__perf=perf;let jsAcc=0,jsMaxAcc=0;
-let gLast=0,wSk=0;function frame(now){if(document.hidden){last=now;requestAnimationFrame(frame);return}if(GF.cap&&now-gLast<1000/GF.cap-4){requestAnimationFrame(frame);return}gLast=now;const t0=performance.now();let dt=(now-last)/1000;last=now;if(dt>.05)dt=.05;if(dt<0)dt=0;
+let gLast=0,wSk=0,rIv=16.7,rPrev=0;function frame(now){{const raw=now-(rPrev||now);rPrev=now;if(raw>2&&raw<60)rIv=rIv*.94+raw*.06}if(document.hidden){last=now;requestAnimationFrame(frame);return}
+ if(GF.cap){const T=1000/GF.cap;if(rIv*2<=T*1.15){if(now-gLast<T-rIv*.5){requestAnimationFrame(frame);return}gLast=Math.max(gLast+T,now-T*.5)}else gLast=now}else gLast=now;const t0=performance.now();let dt=(now-last)/1000;last=now;if(dt>.05)dt=.05;if(dt<0)dt=0;
  if(scene==='world'&&G){worldUpdate(dt);if(ov.classList.contains('hide')||(wSk=(wSk+1)%3)===0)drawWorld()}
  else if(scene==='battle'){keyMove();if(atkHeld){const k=Math.min(1,(performance.now()-atkT)/800);ringEl.style.background=`conic-gradient(var(--gold) ${k*360}deg,transparent 0deg)`}
   if(phase==='battle'){const sdt=dt*(wheelOn?.25:1);for(let q=0;q<(window.SIMX||1);q++)step(sdt);fadeStep(sdt);abTick(sdt)}else{gridBuild();groupStats()}bRender(dt);
   uiT+=dt;if(uiT>.25){uiT=0;$('cP').textContent=alive[0];$('cE').textContent=alive[1];const tot=power[0]+power[1];$('powP').style.width=(tot?power[0]/tot*100:50)+'%';$('hpB').style.width=(hero>=0?Math.max(0,hp[hero]/mhp[hero]*100):0)+'%'}}
  const js=performance.now()-t0;jsAcc+=js;if(js>jsMaxAcc)jsMaxAcc=js;frames++;acc+=dt;
  if(acc>=1){const fps=frames/acc;perf.fps=fps;perf.js=jsAcc/frames;perf.jsMax=jsMaxAcc;perf.inst=lastInst;perf.q=qLevel;
-  const TF=GF.cap||60;if(scene==='battle'&&GF.ad){if(fps<TF*.83){slowSec++;fastSec=0;if(slowSec>=2&&qLevel<QS.length-1){qLevel++;bResize();slowSec=0}}else if(fps>TF*.95){fastSec++;slowSec=0;if(fastSec>=6&&qLevel>0){qLevel--;bResize();fastSec=0}}else slowSec=fastSec=0}
-  else if(scene==='world'&&GF.ad){if(fps<TF*.8){slowSec++;fastSec=0;if(slowSec>=3&&GF.as>.65){GF.as=Math.max(.65,GF.as-.1);wResize();slowSec=0}}else if(fps>TF*.95){fastSec++;slowSec=0;if(fastSec>=10&&GF.as<1){GF.as=Math.min(1,GF.as+.05);wResize();fastSec=0}}else slowSec=fastSec=0}
+  const TF=GF.cap||60;if(scene==='battle'&&GF.ad){if(fps<TF*.83){slowSec++;fastSec=0;if(slowSec>=3&&qLevel<QS.length-1){qLevel++;bResize();slowSec=0;fastSec=-20}}else if(fps>TF*.95){fastSec++;slowSec=0;if(fastSec>=25&&qLevel>0){qLevel--;bResize();fastSec=0}}else slowSec=fastSec=0}
+  else if(scene==='world'&&GF.ad){if(fps<TF*.8){slowSec++;fastSec=0;if(slowSec>=3&&GF.as>.65){GF.as=Math.max(.65,GF.as-.1);wResize();slowSec=0}}else if(fps>TF*.95){fastSec++;slowSec=0;if(fastSec>=30&&GF.as<1){GF.as=Math.min(1,GF.as+.05);wResize();fastSec=0}}else slowSec=fastSec=0}
   if(GF.fps&&scene==='world'){const w=$('wfps');if(w)w.textContent=`${fps|0} FPS`}
   if(scene==='battle'){
    $('fps').textContent=`${fps|0} FPS · ${perf.js.toFixed(1)}ms${qLevel?' · K'+qLevel:''}`}
@@ -2462,7 +2477,7 @@ function recStop(){if(mrec&&mrec.state!=='inactive')mrec.stop();clearTimeout(mto
 recB.onclick=()=>{if(mrec&&mrec.state==='recording'){recStop();return}try{const st=cvs.captureStream(30);const mt=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'].find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t));if(!mt){toast('Bu cihaz kaydı desteklemiyor');return}
  mch=[];mrec=new MediaRecorder(st,{mimeType:mt,videoBitsPerSecond:5e6});mrec.ondataavailable=e=>{if(e.data.size)mch.push(e.data)};mrec.onstop=async()=>{recB.textContent='● Kayıt';recB.style.background='#0007';const b=new Blob(mch,{type:mt}),f=new File([b],'savas.'+(mt.includes('mp4')?'mp4':'webm'),{type:mt});try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Savaş kaydı'});return}}catch(_){}const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=f.name;a.click();toast('Kayıt indirildi')};
  mrec.start(500);recB.textContent='■ Durdur';recB.style.background='#a8322a';mto=setTimeout(recStop,30000);toast('Kayıt başladı (en çok 30 sn)')}catch(e){toast('Kayıt başlatılamadı')}};
-setInterval(()=>{recB.style.display=(typeof scene!=='undefined'&&scene==='battle'&&phase==='battle')?'block':'none';if(scene!=='battle'&&mrec&&mrec.state==='recording')recStop()},400);
+setInterval(()=>{const d_=(typeof scene!=='undefined'&&scene==='battle'&&phase==='battle')?'block':'none';if(recB.style.display!==d_)recB.style.display=d_;if(scene!=='battle'&&mrec&&mrec.state==='recording')recStop()},400);
 // tohum
 const mul=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
 const hstr=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
@@ -2492,7 +2507,7 @@ function auInit(){if(AU.ctx||!AU.on)return;try{const C=window.AudioContext||wind
 document.addEventListener('visibilitychange',()=>{if(AU.ctx)document.hidden?AU.ctx.suspend():(AU.on&&AU.ctx.resume())});
 let auMode='',auLast=0;
 function auUpdate(){if(!AU.ctx||!AU.on)return;const t=AU.ctx.currentTime;let m='w',ten=0;
- if(scene==='battle'&&phase==='battle'){m='b';let a=0,e=0;for(let i=0;i<cnt;i++)if(hp[i]>0){team[i]===0?a++:e++}ten=Math.min(1,(a+e)/260)}
+ if(scene==='battle'&&phase==='battle'){m='b';let a=0,e=0;for(let i=0;i<N;i++)if(flg[i]&A_){team[i]===0?a++:e++}ten=Math.min(1,(a+e)/260)}
  else if(typeof scene!=='undefined'&&scene==='world'){m='w';ten=(G&&G.fc&&G.fc.length>0)?.3:0}
  const bt=m==='b';
  AU.nf.frequency.setTargetAtTime(bt?900+ten*900:(G&&G.wx&&G.wx.t==='storm'?1200:350),t,.5);AU.ng.gain.setTargetAtTime(bt?.04:.05,t,.5);
